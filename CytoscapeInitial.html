@@ -5,7 +5,7 @@
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.2.12/cytoscape.min.js"></script>
 	<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
-	<style type="text/css">
+	<style type="text/css"> 
 		#cy {
 		  height: 100%;
 		  width: 100%;
@@ -22,7 +22,8 @@
 <script type="text/javascript">
 var cy = cytoscape({
 
-  container: document.getElementById('cy'), // container to render in
+  // container: document.getElementById('cy'), // container to render in
+  container: $('#cy'), // container to render in
 
   elements: [ // list of graph elements to start with
     { // node a

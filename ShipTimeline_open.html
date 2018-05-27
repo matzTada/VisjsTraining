@@ -1,0 +1,193 @@
+<!-- http://visjs.org/docs/timeline/ -->
+
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css">
+  <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.10.0/jquery.timepicker.min.css">
+</head>
+<body>
+  <div id="visualization"></div>
+  <input id="file_input" type="file">
+  <button id="download_button">Save Timeline</button>
+  <form id="add_form">
+    <input type="text" name="vessel" value="" placeholder="VESSEL NAME">    
+    <input type="text" name="group" value="" placeholder="BERTH">
+    <input type="text" name="start_day" value="" placeholder="Start: YYYY/MM/DD ">
+    <input type="text" name="start_hour" value="" placeholder="hh:mm">
+    <input type="text" name="end_day" value="" placeholder="End: YYYY/MM/DD ">
+    <input type="text" name="end_hour" value="" placeholder="hh:mm">
+  </form>
+  <button id="add_form_button">add</button>
+
+  <form id="modify_form">
+    <input type="text" name="vessel" value="" placeholder="VESSEL NAME">    
+    <input type="text" name="group" value="" placeholder="BERTH">
+    <input type="text" name="start_day" value="" placeholder="Start: YYYY/MM/DD ">
+    <input type="text" name="start_hour" value="" placeholder="hh:mm">
+    <input type="text" name="end_day" value="" placeholder="End: YYYY/MM/DD ">
+    <input type="text" name="end_hour" value="" placeholder="hh:mm">
+  </form>
+  <button id="modify_form_button">modify</button>
+
+  <form id="fit_form">
+    <input type="text" name="from" value="" placeholder="left boundary">    
+    <input type="text" name="to" value="" placeholder="right boundary">
+  </form>
+  <button id="fit_form_button">fit from to</button>
+  <button id="fit_all_button">fit all</button>
+  
+</body>
+
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.10.0/jquery.timepicker.min.js"></script>
+<script type="text/javascript">
+
+// script -----------------------------
+
+
+// input -----------------------
+if(window.File){
+  console.log("File API is available");
+}else{
+  console.log("File API is NOT available")
+}
+
+var reader = new FileReader();
+$("#file_input").change(function(){
+  if(this.files[0].type == "text/plain"){
+    reader.readAsText(this.files[0], "UTF-8");
+  }
+});
+
+var container = document.getElementById('visualization');
+var dataset = new vis.DataSet();
+var startdate = new Date();
+dataset.add({id: -1,group: -1,content: "NOW",start: startdate.toString()}); // dummy data to avoid error
+// dataset.on('*', function (event, properties, senderId) {
+//   console.log('event:', event, 'properties:', properties, 'senderId:', senderId);
+// });
+var groups = new vis.DataSet();
+groups.add([
+  ]);
+// console.log(JSON.stringify(groups));
+var options = {
+  selectable: true,
+  editable: true
+};
+var timeline = new vis.Timeline(container, dataset, groups, options);
+var doubleclickedID = -1;
+timeline.on('doubleClick', function(properties){
+  console.log("doubleClicked");
+  doubleclickedID = properties.item;
+  var tmpobj = dataset.get(doubleclickedID);
+  $('#modify_form [name=group]').val(tmpobj["group"]);
+  $('#modify_form [name=vessel]').val(tmpobj["content"]);
+  var tmpstart = new Date(tmpobj["start"]);
+  $('#modify_form [name=start_day]').val(tmpstart.getFullYear()+"/"+(tmpstart.getMonth()+1)+"/"+tmpstart.getDate());
+  $('#modify_form [name=start_hour]').val(('0'+tmpstart.getHours()).slice(-2)+":"+('0'+tmpstart.getMinutes()).slice(-2));  
+  var tmpend = new Date(tmpobj["end"]);
+  $('#modify_form [name=end_day]').val(tmpend.getFullYear()+"/"+(tmpend.getMonth()+1)+"/"+tmpend.getDate());
+  $('#modify_form [name=end_hour]').val(('0'+tmpend.getHours()).slice(-2)+":"+('0'+tmpend.getMinutes()).slice(-2));  
+
+  console.log(properties);
+  console.log(tmpobj);
+});
+
+reader.addEventListener('load', function(){
+  console.log("loaded dataset");
+  var readjson = JSON.parse(reader.result);
+  for(var i = 0; i < readjson.length; i++){
+    var tmpstart = new Date(readjson[i].start);
+    var tmpend = new Date(readjson[i].end);
+    var tmpvessel = {
+      id: Number(Math.max.apply([], dataset.getIds()) + 1),
+      group: readjson[i].group,
+      content: readjson[i].content,
+      start: tmpstart,
+      end: tmpend,
+      editable: true,
+      selectable: true
+    };
+    dataset.add(tmpvessel);
+  }
+  // console.log(JSON.stringify(dataset.get())); // dataset.get() outputs all data in the object
+});
+
+// output -------------------------
+$("#download_button").on("click", function(){
+  console.log("saved dataset");
+  saveAs(new Blob([JSON.stringify(dataset.get(), null, 2)], {type: "text/plain;charset=utf-8"}), "dataset.txt");
+});
+
+// form process --------------------
+$('#add_form [name=group]').autocomplete({source: groups.getIds()});
+$('#add_form [name=start_day]').datepicker({dateFormat: "yy/mm/dd"});  
+$('#add_form [name=start_hour]').timepicker({step:5, timeFormat:'H:i'});  
+$('#add_form [name=end_day]').datepicker({dateFormat: "yy/mm/dd"});    
+$('#add_form [name=end_hour]').timepicker({step:5, timeFormat:'H:i'});    
+
+$("#add_form_button").on("click", function(){
+  var tmpstart = new Date($('#add_form [name=start_day]').val() + " " + $('#add_form [name=start_hour]').val() + ":00");
+  var tmpend = new Date($('#add_form [name=end_day]').val() + " " + $('#add_form [name=end_hour]').val() + ":00");
+  var tmpvessel = {
+    id: Number(Math.max.apply([], dataset.getIds()) + 1),
+    group: $('#add_form [name=group]').val(),
+    content: $('#add_form [name=vessel]').val(),
+    start: tmpstart,
+    end: tmpend,
+    editable: true,
+    selectable: true
+  };
+  dataset.add(tmpvessel);
+
+  console.log("added item");
+  console.log(JSON.stringify(tmpvessel)); // dataset.get() outputs all data in the object
+});
+
+$('#modify_form [name=group]').autocomplete({source: groups.getIds()});
+$('#modify_form [name=start_day]').datepicker({dateFormat: "yy/mm/dd"});  
+$('#modify_form [name=start_hour]').timepicker({step:5, timeFormat:'H:i'});  
+$('#modify_form [name=end_day]').datepicker({dateFormat: "yy/mm/dd"});    
+$('#modify_form [name=end_hour]').timepicker({step:5, timeFormat:'H:i'});
+
+$("#modify_form_button").on("click", function(){
+  var tmpstart = new Date($('#modify_form [name=start_day]').val() + " " + $('#modify_form [name=start_hour]').val() + ":00");
+  var tmpend = new Date($('#modify_form [name=end_day]').val() + " " + $('#modify_form [name=end_hour]').val() + ":00");
+  var tmpvessel = {
+    id: doubleclickedID,
+    group: $('#modify_form [name=group]').val(),
+    content: $('#modify_form [name=vessel]').val(),
+    start: tmpstart,
+    end: tmpend,
+    editable: true,
+    selectable: true
+  };
+  dataset.update(tmpvessel);
+
+  console.log("modifyed item");
+  console.log(JSON.stringify(tmpvessel)); // dataset.get() outputs all data in the object
+});
+
+
+// scope changer
+$('#fit_form [name=from]').datepicker({dateFormat: "yy-mm-dd"});  
+$('#fit_form [name=to]').datepicker({dateFormat: "yy-mm-dd"});  
+$("#fit_form_button").on("click", function(){
+  timeline.setWindow($('#fit_form [name=from]').val(), $('#fit_form [name=to]').val());
+});
+$("#fit_all_button").on("click", function(){
+  timeline.fit();
+});
+
+
+
+</script>
+</html>
+
